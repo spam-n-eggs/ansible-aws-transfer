@@ -15,8 +15,8 @@ short_description: Manage SFTP Severs in AWS.
 description:
     - Manage SFTP Servers in AWS Using AWS Transfer Service.
 version_added: "2.0"
-requirements: [ boto3, pydash]
-author: "Mark J. Horninger (@spam-n-eggs)"
+requirements: [ boto3, pydash ]
+author: "Mark J. Horninger (@spam-n-eggs); Dominion Solutions LLC (@dominion-solutions); TAPP Network, LLC (@TappNetwork)"
 options:
   force:
     description:
@@ -36,6 +36,7 @@ options:
   state:
     description:
       - Create or remove the SFTP Server
+        Present will also execute an update if necessary.
     required: false
     default: present
     choices: [ 'present', 'absent' ]
@@ -87,11 +88,10 @@ except ImportError:
 SERVER_NAME_KEY = 'aws:transfer:customHostname'
 
 
-def create_or_update_sftp(client, module, location):
+def create_or_update_sftp(client: boto3.session.Session, module: AnsibleAWSModule):
     name = module.params.get("name")
     tags = module.params.get("tags")
     purge_tags = module.params.get("purge_tags")
-    versioning = module.params.get("versioning")
     endpoint_type = module.params.get("endpoint_type")
     vpc_id = module.params.get("vpc_id")
     host_key = module.params.get("host_key")
@@ -104,6 +104,26 @@ def create_or_update_sftp(client, module, location):
     sftp_server = None
     needs_creation = False
 
+    # TODO: Eventually, this needs to support all of the endpoint details, including vpc endpoint ids.
+    endpoint_details = None
+    if identity_provider_type != 'PUBLIC' and vpc_id is not None:
+        endpoint_details = {
+            # "AddressAllocationIds": [],
+            # "SubnetIds": [],
+            # "VpcEndpointId": "",
+            "VpcId": vpc_id
+        }
+
+    identity_provider_details = None
+    if identity_provider_url is not None and identity_provider_role is not None:
+        identity_provider_details = {
+            "InvocationRole": identity_provider_role,
+            "Url": identity_provider_url
+        }
+
+    name_tag = {'Key': SERVER_NAME_KEY, 'Value': name}
+    assigned_tags = [name_tag]
+
     try:
         sftp_server = find_sftp_server(client, name)
         needs_creation = sftp_server is None
@@ -112,14 +132,30 @@ def create_or_update_sftp(client, module, location):
     except (BotoCoreError, ClientError) as e:
         module.fail_json_aws(e, msg="Failed to check Transfer presence")
     if needs_creation:
-        sftp_changed = create_sftp_server(client)
+        result = create_sftp_server(client, endpoint_details, endpoint_type, host_key,
+                                    identity_provider_details, identity_provider_type, logging_role, name_tag)
+        sftp_server_id = result['ServerId']
     else:
-        pass
+        sftp_server_id = sftp_server['ServerId']
+        if not purge_tags:
+            assigned_tags = sftp_server['Tags']
+    # Update SFTP Server Details
+    # Update Tags
+    for key, value in tags.items():
+        item = py_.find(assigned_tags, {'Key': key});
+        if item:
+            item['Value'] = value
+        else:
+            item = {'Key': key, 'Value': value }
+            assigned_tags.append(item)
+
+    result = client.update_server(sftp_server_id, endpoint_details, endpoint_type, host_key,
+                                  identity_provider_details, logging_role)
 
     module.exit_json(changed=changed, name=name, **result)
 
 
-def find_sftp_server(client, server_name):
+def find_sftp_server(client: boto3.session.Session, server_name: str):
     # Finding a server by name is a little more complicated than I originally expected.  Rather than wasting resources
     # it's much easier to just go find it and then check if the return value of this method is None.
     # Load all of the server IDs in the account
@@ -130,12 +166,58 @@ def find_sftp_server(client, server_name):
 
 
 @AWSRetry.exponential_backoff(max_delay=120)
-def create_sftp_server(client, endpoint_details, endpoint_type, host_key, identity_provider_details,
-                       identity_provider_type, logging_role, name):
-    name_tag = {'Key': SERVER_NAME_KEY, 'Value': name}
-    response = client.create_server(endpoint_details, endpoint_type, host_key, identity_provider_details,
-                                    identity_provider_type, logging_role, Tags=[name_tag])
+def create_sftp_server(client: boto3.session.Session, endpoint_details, endpoint_type, host_key,
+                       identity_provider_details, identity_provider_type, logging_role, name):
+    """
+    Does the work of actually creating the SFTP Server.
+    :arg client: boto3.session.Session the boto3 client that is used to create the connection
+    :arg endpoint_details: object The details that are provided to the endpoint - right now vpc_id is the only supported
+    information.
+    :arg endpoint_type: str The type of endpoint that the created SFTP Server connects to.  AWS Supports PUBLIC, VPC and
+    VPC_ENDPOINT
+    :arg host_key: str This is the generated ssh key for the host, the result of ssh-keygen.  Do not use this unless you
+    are transitioning from another SFTP Server and need to maintain backward compatibility.
+    :arg identity_provider_details: object The information for the provided entity type.
+    See https://docs.aws.amazon.com/transfer/latest/userguide/API_IdentityProviderDetails.html for more details.
+    :arg identity_provider_type: str Currently supports SERVICE_MANAGED or API_GATEWAY - if using API_GATEWAY,
+    identity_provider_details becomes required.  SERVICE_MANAGED is the default, and allows AWS to manage the SFTP
+    server.
+    :arg logging_role: str A value that allows the service to write your SFTP users' activity to your Amazon CloudWatch
+    logs for monitoring and auditing purposes.
+    :arg name: dict The name of the SFTP server that also becomes the FQDN of it, in tag format.
+    :rtype: dict A Single Entry Dictionary that contains the Server ID.
+    """
+    kwargDict = { 'Tags':[name] }
+    if endpoint_details is not None:
+        kwargDict['EndpointDetails']= endpoint_details
+    if endpoint_type is not None:
+        kwargDict['EndpointType'] = endpoint_type
+    if host_key is not None:
+        kwargDict['HostKey'] = host_key
+    if identity_provider_details is not None:
+        kwargDict['IdentityProviderDetails'] = identity_provider_details
+    if identity_provider_type is not None:
+        kwargDict['IdentityProviderType']= identity_provider_type
+    if logging_role is not None:
+        kwargDict['LoggingRole']= logging_role
+
+    print(kwargDict)
+    response = client.create_server(**kwargDict)
+    # According to the documentation response should be an object containing a single string like this:
+    # {
+    #    ServerId: 'string(19)'
+    # }
     return response
+
+
+@AWSRetry.exponential_backoff(max_delay=120)
+def add_sftp_user(client: boto3.session.Session, module: AnsibleAWSModule):
+    pass
+
+
+@AWSRetry.exponential_backoff(max_delay=120)
+def destroy_sftp_server(client: boto3.session.Session, module: AnsibleAWSModule):
+    pass
 
 
 def main():
@@ -181,15 +263,14 @@ def main():
 
     state = module.params.get("state")
 
-    transfer_client = boto3.client(service_name='transfer', region_name=location, endpoint_url=endpoint_url,
+    transfer_client = boto3.client(service_name='transfer', region_name=region, endpoint_url=endpoint_url,
                                    aws_access_key_id=aws_access_token, aws_secret_access_key=aws_secret_key,
                                    aws_session_token=aws_session_token)
 
     if state == 'present':
-        create_or_update_sftp(transfer_client, module, location)
+        create_or_update_sftp(transfer_client, module)
     elif state == 'absent':
-        # destroy_bucket(s3_client, module)
-        pass
+        destroy_sftp_server(transfer_client, module)
 
 
 if __name__ == '__main__':
