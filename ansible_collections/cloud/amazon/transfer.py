@@ -1,5 +1,4 @@
 #!/usr/bin/python
-
 from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
@@ -39,7 +38,7 @@ options:
         Present will also execute an update if necessary.
     required: false
     default: present
-    choices: [ 'present', 'absent' ]
+    choices: [ 'present', 'absent', 'add_user' ]
     type: str
   tags:
     description:
@@ -90,8 +89,10 @@ SERVER_NAME_KEY = 'aws:transfer:customHostname'
 
 def create_or_update_sftp(client: boto3.session.Session, module: AnsibleAWSModule):
     name = module.params.get("name")
-    tags = module.params.get("tags")
     purge_tags = module.params.get("purge_tags")
+    tags = {}
+    if module.params.get("tags") is not None:
+        tags = {*module.params.get("tags")}
     endpoint_type = module.params.get("endpoint_type")
     vpc_id = module.params.get("vpc_id")
     host_key = module.params.get("host_key")
@@ -106,7 +107,7 @@ def create_or_update_sftp(client: boto3.session.Session, module: AnsibleAWSModul
 
     # TODO: Eventually, this needs to support all of the endpoint details, including vpc endpoint ids.
     endpoint_details = None
-    if identity_provider_type != 'PUBLIC' and vpc_id is not None:
+    if endpoint_type != 'PUBLIC' and vpc_id is not None:
         endpoint_details = {
             # "AddressAllocationIds": [],
             # "SubnetIds": [],
@@ -136,7 +137,7 @@ def create_or_update_sftp(client: boto3.session.Session, module: AnsibleAWSModul
                                     identity_provider_details, identity_provider_type, logging_role, name_tag)
         sftp_server_id = result['ServerId']
     else:
-        sftp_server_id = sftp_server['ServerId']
+        sftp_server_id = sftp_server['Server']['ServerId']
         if not purge_tags:
             assigned_tags = sftp_server['Tags']
     # Update SFTP Server Details
@@ -148,9 +149,10 @@ def create_or_update_sftp(client: boto3.session.Session, module: AnsibleAWSModul
         else:
             item = {'Key': key, 'Value': value }
             assigned_tags.append(item)
+    update_args = build_server_kwargs(endpoint_details, endpoint_type, host_key, identity_provider_details,
+                                      identity_provider_type, logging_role, name, sftp_server_id, is_update=True)
 
-    result = client.update_server(sftp_server_id, endpoint_details, endpoint_type, host_key,
-                                  identity_provider_details, logging_role)
+    result = client.update_server(**update_args)
 
     module.exit_json(changed=changed, name=name, **result)
 
@@ -187,27 +189,37 @@ def create_sftp_server(client: boto3.session.Session, endpoint_details, endpoint
     :arg name: dict The name of the SFTP server that also becomes the FQDN of it, in tag format.
     :rtype: dict A Single Entry Dictionary that contains the Server ID.
     """
-    kwargDict = { 'Tags':[name] }
-    if endpoint_details is not None:
-        kwargDict['EndpointDetails']= endpoint_details
-    if endpoint_type is not None:
-        kwargDict['EndpointType'] = endpoint_type
-    if host_key is not None:
-        kwargDict['HostKey'] = host_key
-    if identity_provider_details is not None:
-        kwargDict['IdentityProviderDetails'] = identity_provider_details
-    if identity_provider_type is not None:
-        kwargDict['IdentityProviderType']= identity_provider_type
-    if logging_role is not None:
-        kwargDict['LoggingRole']= logging_role
+    kwargDict = build_server_kwargs(endpoint_details, endpoint_type, host_key, identity_provider_details,
+                                    identity_provider_type, logging_role, name)
 
-    print(kwargDict)
     response = client.create_server(**kwargDict)
     # According to the documentation response should be an object containing a single string like this:
     # {
     #    ServerId: 'string(19)'
     # }
     return response
+
+
+def build_server_kwargs(endpoint_details, endpoint_type, host_key, identity_provider_details, identity_provider_type,
+                        logging_role, name, server_id=None, is_update=False):
+    kwargDict = {}
+    if not is_update:
+        kwargDict['Tags'] = [name]
+    if endpoint_details is not None:
+        kwargDict['EndpointDetails'] = endpoint_details
+    if endpoint_type is not None:
+        kwargDict['EndpointType'] = endpoint_type
+    if host_key is not None:
+        kwargDict['HostKey'] = host_key
+    if identity_provider_details is not None:
+        kwargDict['IdentityProviderDetails'] = identity_provider_details
+    if identity_provider_type is not None and not is_update:
+        kwargDict['IdentityProviderType'] = identity_provider_type
+    if logging_role is not None:
+        kwargDict['LoggingRole'] = logging_role
+    if server_id is not None:
+        kwargDict['ServerId'] = server_id
+    return kwargDict
 
 
 @AWSRetry.exponential_backoff(max_delay=120)
@@ -217,7 +229,14 @@ def add_sftp_user(client: boto3.session.Session, module: AnsibleAWSModule):
 
 @AWSRetry.exponential_backoff(max_delay=120)
 def destroy_sftp_server(client: boto3.session.Session, module: AnsibleAWSModule):
-    pass
+    name = module.params.get('name')
+    sftp_server = find_sftp_server(client, name)
+    changed = False
+    if sftp_server is not None:
+        sftp_server_id = sftp_server['Server']['ServerId']
+        response = client.delete_server(ServerId=sftp_server_id)
+        changed = True
+    module.exit_json(changed=changed, name=name, **response)
 
 
 def main():
@@ -225,7 +244,7 @@ def main():
     argument_spec.update(
         dict(
             name=dict(required=True),
-            state=dict(default='present', choices=['present', 'absent']),
+            state=dict(default='present', choices=['present', 'absent', 'add_user', 'remove_user']),
             tags=dict(type='dict'),
             purge_tags=dict(type='bool', default=True),
             versioning=dict(type='bool'),
@@ -238,6 +257,7 @@ def main():
             identity_provider_url=dict(),
             transfer_endpoint_url=dict(),
             logging_role=dict(),
+            users=dict(type='dict'),
         )
     )
 
@@ -271,7 +291,9 @@ def main():
         create_or_update_sftp(transfer_client, module)
     elif state == 'absent':
         destroy_sftp_server(transfer_client, module)
-
-
+    elif state == 'add_user':
+        pass
+    elif state == 'remove_user':
+        pass
 if __name__ == '__main__':
     main()
