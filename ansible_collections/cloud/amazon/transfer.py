@@ -1,11 +1,11 @@
 #!/usr/bin/python
+# transfer.py
+# Ansible AWS Transfer Plugin
+# Copyright (C) 2020  Mark Horninger; Dominion Solutions LLC; TAPP Network, LLC
+
 from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
-
-ANSIBLE_METADATA = {'metadata_version': '0.1',
-                    'status': ['stableinterface'],
-                    'supported_by': 'core'}
 
 DOCUMENTATION = '''
 ---
@@ -13,16 +13,10 @@ module: transfer
 short_description: Manage SFTP Severs in AWS.
 description:
     - Manage SFTP Servers in AWS Using AWS Transfer Service.
-version_added: "2.0"
+version_added: "2.4"
 requirements: [ boto3, pydash ]
-author: "Mark J. Horninger (@spam-n-eggs); Dominion Solutions LLC (@dominion-solutions); TAPP Network, LLC (@TappNetwork)"
+author: "Mark J. Horninger(@spam-n-eggs); Dominion Solutions LLC(@dominion-solutions); TAPP Network, LLC(@TappNetwork)"
 options:
-  force:
-    description:
-      - When trying to delete a bucket, delete all keys (including versions and delete markers)
-        in the bucket first (an s3 bucket must be empty for a successful deletion)
-    type: bool
-    default: 'no'
   name:
     description:
       - Fully Qualified Domain name of the SFTP Server to create
@@ -38,7 +32,7 @@ options:
         Present will also execute an update if necessary.
     required: false
     default: present
-    choices: [ 'present', 'absent', 'add_user' ]
+    choices: [ 'present', 'absent', 'add_user', 'remove_user' ]
     type: str
   tags:
     description:
@@ -49,7 +43,6 @@ options:
       - whether to remove tags that aren't present in the C(tags) parameter
     type: bool
     default: True
-    version_added: "2.9"
 extends_documentation_fragment:
     - aws
     - ec2
@@ -65,13 +58,8 @@ EXAMPLES = '''
 
 '''
 
-import json
-import os
-import time
 import boto3
 
-from ansible.module_utils.six.moves.urllib.parse import urlparse
-from ansible.module_utils.six import string_types
 from ansible.module_utils.basic import to_text
 from ansible.module_utils.aws.core import AnsibleAWSModule, is_boto3_error_code
 from ansible.module_utils.ec2 import compare_policies, ec2_argument_spec, boto3_tag_list_to_ansible_dict, \
@@ -136,6 +124,7 @@ def create_or_update_sftp(client: boto3.session.Session, module: AnsibleAWSModul
         result = create_sftp_server(client, endpoint_details, endpoint_type, host_key,
                                     identity_provider_details, identity_provider_type, logging_role, name_tag)
         sftp_server_id = result['ServerId']
+        changed = True
     else:
         sftp_server_id = sftp_server['Server']['ServerId']
         if not purge_tags:
@@ -153,6 +142,7 @@ def create_or_update_sftp(client: boto3.session.Session, module: AnsibleAWSModul
                                       identity_provider_type, logging_role, name, sftp_server_id, is_update=True)
 
     result = client.update_server(**update_args)
+    changed = True
 
     module.exit_json(changed=changed, name=name, **result)
 
@@ -202,29 +192,71 @@ def create_sftp_server(client: boto3.session.Session, endpoint_details, endpoint
 
 def build_server_kwargs(endpoint_details, endpoint_type, host_key, identity_provider_details, identity_provider_type,
                         logging_role, name, server_id=None, is_update=False):
-    kwargDict = {}
+    kwarg_dict = {}
     if not is_update:
-        kwargDict['Tags'] = [name]
+        kwarg_dict['Tags'] = [name]
     if endpoint_details is not None:
-        kwargDict['EndpointDetails'] = endpoint_details
+        kwarg_dict['EndpointDetails'] = endpoint_details
     if endpoint_type is not None:
-        kwargDict['EndpointType'] = endpoint_type
+        kwarg_dict['EndpointType'] = endpoint_type
     if host_key is not None:
-        kwargDict['HostKey'] = host_key
+        kwarg_dict['HostKey'] = host_key
     if identity_provider_details is not None:
-        kwargDict['IdentityProviderDetails'] = identity_provider_details
+        kwarg_dict['IdentityProviderDetails'] = identity_provider_details
     if identity_provider_type is not None and not is_update:
-        kwargDict['IdentityProviderType'] = identity_provider_type
+        kwarg_dict['IdentityProviderType'] = identity_provider_type
     if logging_role is not None:
-        kwargDict['LoggingRole'] = logging_role
+        kwarg_dict['LoggingRole'] = logging_role
     if server_id is not None:
-        kwargDict['ServerId'] = server_id
-    return kwargDict
+        kwarg_dict['ServerId'] = server_id
+    return kwarg_dict
+
+
+def add_sftp_users(client: boto3.session.Session, module: AnsibleAWSModule):
+    changed = False
+    user_name = module.params.get('user_name')
+    user_home_directory = module.params.get('user_home_directory')
+    user_home_directory_type = module.params.get('user_home_directory_type')
+    user_home_directory_mappings = module.params.get('user_home_directory_mappings')
+    user_policy = module.params.get('user_policy')
+    user_role = module.params.get('user_role')
+    user_ssh_public_key_body = module.params.get('user_ssh_public_key_body')
+    user_tags = module.params.get('user_tags')
+    name = module.params.get('name')
+
+    result = add_user(client, user_name,user_home_directory, user_home_directory_type, user_home_directory_mappings,
+                      user_policy, user_role, user_ssh_public_key_body, user_tags, name)
+    module.exit_json(changed=changed, **result)
 
 
 @AWSRetry.exponential_backoff(max_delay=120)
-def add_sftp_user(client: boto3.session.Session, module: AnsibleAWSModule):
-    pass
+def add_user(client: boto3.session.Session, user_name, user_home_directory, user_home_directory_type,
+             user_home_directory_mappings, user_policy, user_role, user_ssh_public_key_body, user_tags, name):
+    result = {}
+    sftp_server = find_sftp_server(client, name)
+    if sftp_server is not None:
+        sftp_server_id = sftp_server['Server']['ServerId']
+        add_user_kwargs = dict(
+            Role=user_role,
+            ServerId=sftp_server_id,
+            UserName=user_name
+        )
+
+        if user_home_directory is not None:
+            add_user_kwargs['HomeDirectory'] = user_home_directory
+        if user_home_directory_type is not None:
+            add_user_kwargs['HomeDirectoryType'] = user_home_directory_type
+        if user_home_directory_mappings is not None:
+            add_user_kwargs['HomeDirectoryMappings'] = user_home_directory_mappings
+        if user_policy is not None:
+            add_user_kwargs['Policy'] = user_policy
+        if user_ssh_public_key_body is not None:
+            add_user_kwargs['SshPublicKeyBody'] = user_ssh_public_key_body
+        if user_tags is not None:
+            add_user_kwargs['Tags'] = user_tags
+
+        result = client.create_user(**add_user_kwargs)
+    return result
 
 
 @AWSRetry.exponential_backoff(max_delay=120)
@@ -237,6 +269,24 @@ def destroy_sftp_server(client: boto3.session.Session, module: AnsibleAWSModule)
         response = client.delete_server(ServerId=sftp_server_id)
         changed = True
     module.exit_json(changed=changed, name=name, **response)
+
+@AWSRetry.exponential_backoff(max_delay=120)
+def destroy_sftp_users(client, module):
+    changed = False
+    response = dict()
+    name = module.params.get('name')
+    user_name = module.params.get('user_name')
+    sftp_server_id = get_sftp_server_id(client, name)
+    response = client.delete_user(ServerId=sftp_server_id, UserName=user_name)
+    changed = True
+
+    module.exit_json(changed=changed, name=name, **response)
+
+
+def get_sftp_server_id(client, name):
+    sftp_server = find_sftp_server(client, name)
+    sftp_server_id = sftp_server['Server']['ServerId']
+    return sftp_server_id
 
 
 def main():
@@ -257,7 +307,14 @@ def main():
             identity_provider_url=dict(),
             transfer_endpoint_url=dict(),
             logging_role=dict(),
-            users=dict(type='dict'),
+            user_name=dict(type='str'),
+            user_home_directory=dict(type='str', default='/'),
+            user_home_directory_type=dict(type='str', choices=['PATH', 'LOGICAL']),
+            user_home_directory_mappings=dict(type='dict'),
+            user_policy=dict(type='str'),
+            user_role=dict(type='str'),
+            user_ssh_public_key_body=dict(type='str'),
+            user_tags=dict(type='list'),
         )
     )
 
@@ -292,8 +349,9 @@ def main():
     elif state == 'absent':
         destroy_sftp_server(transfer_client, module)
     elif state == 'add_user':
-        pass
+        add_sftp_users(transfer_client, module)
     elif state == 'remove_user':
-        pass
+        destroy_sftp_users(transfer_client, module)
+
 if __name__ == '__main__':
     main()
