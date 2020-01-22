@@ -1,3 +1,6 @@
 ansible
 boto3
+pycodestyle
 pydash
+pylint
+yamllint

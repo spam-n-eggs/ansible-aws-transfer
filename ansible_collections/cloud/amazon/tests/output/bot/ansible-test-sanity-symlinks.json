@@ -1,0 +1,10 @@
+{
+    "docs": "https://docs.ansible.com/ansible/2.9/dev_guide/testing/sanity/symlinks.html",
+    "results": [
+        {
+            "message": "The test `ansible-test sanity --test symlinks` [[explain](https://docs.ansible.com/ansible/2.9/dev_guide/testing/sanity/symlinks.html)] failed with 4 errors:",
+            "output": "tests/output/.tmp/sanity/import/minimal-py37/bin/importer.py:0:0: symlinks outside content tree are not allowed: ../../../../../../../../../../../../../../../usr/local/lib/python3.7/site-packages/ansible_test/_data/sanity/import/importer.py\ntests/output/.tmp/sanity/import/minimal-py37/bin/python:0:0: symlinks outside content tree are not allowed: ../../../../../../../../../../../../../../../usr/local/Cellar/python/3.7.6_1/Frameworks/Python.framework/Versions/3.7/bin/python3.7\ntests/output/.tmp/sanity/import/minimal-py37/bin/python3:0:0: symlinks outside content tree are not allowed: ../../../../../../../../../../../../../../../usr/local/Cellar/python/3.7.6_1/Frameworks/Python.framework/Versions/3.7/bin/python3.7\ntests/output/.tmp/sanity/import/minimal-py37/bin/python3.7:0:0: symlinks outside content tree are not allowed: ../../../../../../../../../../../../../../../usr/local/Cellar/python/3.7.6_1/Frameworks/Python.framework/Versions/3.7/bin/python3.7"
+        }
+    ],
+    "verified": false
+}

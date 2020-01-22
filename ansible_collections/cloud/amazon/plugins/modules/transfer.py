@@ -75,12 +75,12 @@ except ImportError:
 SERVER_NAME_KEY = 'aws:transfer:customHostname'
 
 
-def create_or_update_sftp(client: boto3.session.Session, module: AnsibleAWSModule):
+def create_or_update_sftp(client, module):
     name = module.params.get("name")
     purge_tags = module.params.get("purge_tags")
     tags = {}
     if module.params.get("tags") is not None:
-        tags = {*module.params.get("tags")}
+        tags = module.params.get("tags")
     endpoint_type = module.params.get("endpoint_type")
     vpc_id = module.params.get("vpc_id")
     host_key = module.params.get("host_key")
@@ -132,11 +132,11 @@ def create_or_update_sftp(client: boto3.session.Session, module: AnsibleAWSModul
     # Update SFTP Server Details
     # Update Tags
     for key, value in tags.items():
-        item = py_.find(assigned_tags, {'Key': key});
+        item = py_.find(assigned_tags, {'Key': key})
         if item:
             item['Value'] = value
         else:
-            item = {'Key': key, 'Value': value }
+            item = {'Key': key, 'Value': value}
             assigned_tags.append(item)
     update_args = build_server_kwargs(endpoint_details, endpoint_type, host_key, identity_provider_details,
                                       identity_provider_type, logging_role, name, sftp_server_id, is_update=True)
@@ -224,7 +224,7 @@ def add_sftp_users(client: boto3.session.Session, module: AnsibleAWSModule):
     user_tags = module.params.get('user_tags')
     name = module.params.get('name')
 
-    result = add_user(client, user_name,user_home_directory, user_home_directory_type, user_home_directory_mappings,
+    result = add_user(client, user_name, user_home_directory, user_home_directory_type, user_home_directory_mappings,
                       user_policy, user_role, user_ssh_public_key_body, user_tags, name)
     module.exit_json(changed=changed, **result)
 
@@ -269,6 +269,7 @@ def destroy_sftp_server(client: boto3.session.Session, module: AnsibleAWSModule)
         response = client.delete_server(ServerId=sftp_server_id)
         changed = True
     module.exit_json(changed=changed, name=name, **response)
+
 
 @AWSRetry.exponential_backoff(max_delay=120)
 def destroy_sftp_users(client, module):
@@ -352,6 +353,7 @@ def main():
         add_sftp_users(transfer_client, module)
     elif state == 'remove_user':
         destroy_sftp_users(transfer_client, module)
+
 
 if __name__ == '__main__':
     main()

@@ -160,9 +160,9 @@ dmypy.json
 # .idea/artifacts
 # .idea/compiler.xml
 # .idea/jarRepositories.xml
-# .idea/modules.xml
+# .idea/ansible_collections.xml
 # .idea/*.iml
-# .idea/modules
+# .idea/ansible_collections
 # *.iml
 # *.ipr
 
