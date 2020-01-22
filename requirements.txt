@@ -3,4 +3,5 @@ boto3
 pycodestyle
 pydash
 pylint
+voluptuous
 yamllint

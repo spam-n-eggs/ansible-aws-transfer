@@ -43,6 +43,17 @@ options:
       - whether to remove tags that aren't present in the C(tags) parameter
     type: bool
     default: True
+  endpoint_type: 
+    description:
+      - The type of endpoint to be used
+    type: str
+    choices: ['PUBLIC', 'VPC_ENDPOINT']
+  identity_provider_type:
+    description:
+      - The identity provider type.
+    type: str
+    choices: ['SERVICE_MANAGED', 'API_GATEWAY']
+  
 extends_documentation_fragment:
     - aws
     - ec2
@@ -158,7 +169,7 @@ def find_sftp_server(client, server_name):
 
 
 @AWSRetry.exponential_backoff(max_delay=120)
-def create_sftp_server(client: boto3.session.Session, endpoint_details, endpoint_type, host_key,
+def create_sftp_server(client, endpoint_details, endpoint_type, host_key,
                        identity_provider_details, identity_provider_type, logging_role, name):
     """
     Does the work of actually creating the SFTP Server.
@@ -212,7 +223,7 @@ def build_server_kwargs(endpoint_details, endpoint_type, host_key, identity_prov
     return kwarg_dict
 
 
-def add_sftp_users(client: boto3.session.Session, module: AnsibleAWSModule):
+def add_sftp_users(client, module):
     changed = False
     user_name = module.params.get('user_name')
     user_home_directory = module.params.get('user_home_directory')
