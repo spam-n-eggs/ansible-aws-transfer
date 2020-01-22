@@ -241,7 +241,7 @@ def add_sftp_users(client, module):
 
 
 @AWSRetry.exponential_backoff(max_delay=120)
-def add_user(client: boto3.session.Session, user_name, user_home_directory, user_home_directory_type,
+def add_user(client, user_name, user_home_directory, user_home_directory_type,
              user_home_directory_mappings, user_policy, user_role, user_ssh_public_key_body, user_tags, name):
     result = {}
     sftp_server = find_sftp_server(client, name)
@@ -271,7 +271,7 @@ def add_user(client: boto3.session.Session, user_name, user_home_directory, user
 
 
 @AWSRetry.exponential_backoff(max_delay=120)
-def destroy_sftp_server(client: boto3.session.Session, module: AnsibleAWSModule):
+def destroy_sftp_server(client, module):
     name = module.params.get('name')
     sftp_server = find_sftp_server(client, name)
     changed = False
