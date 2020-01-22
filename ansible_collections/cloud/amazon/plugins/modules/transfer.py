@@ -147,7 +147,7 @@ def create_or_update_sftp(client, module):
     module.exit_json(changed=changed, name=name, **result)
 
 
-def find_sftp_server(client: boto3.session.Session, server_name: str):
+def find_sftp_server(client, server_name):
     # Finding a server by name is a little more complicated than I originally expected.  Rather than wasting resources
     # it's much easier to just go find it and then check if the return value of this method is None.
     # Load all of the server IDs in the account
