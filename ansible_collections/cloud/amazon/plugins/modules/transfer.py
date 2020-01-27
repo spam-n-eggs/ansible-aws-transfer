@@ -3,6 +3,19 @@
 # Ansible AWS Transfer Plugin
 # Copyright (C) 2020  Mark Horninger; Dominion Solutions LLC; TAPP Network, LLC
 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from __future__ import (absolute_import, division, print_function)
 
 __metaclass__ = type
@@ -29,7 +42,7 @@ options:
   state:
     description:
       - Create or remove the SFTP Server
-        Present will also execute an update if necessary.
+      - Present will also execute an update if necessary.
     required: false
     default: present
     choices: [ 'present', 'absent', 'add_user', 'remove_user' ]
@@ -43,17 +56,58 @@ options:
       - whether to remove tags that aren't present in the C(tags) parameter
     type: bool
     default: True
-  endpoint_type: 
+  endpoint_type:
     description:
-      - The type of endpoint to be used
+      - The type of endpoint to be used.
     type: str
     choices: ['PUBLIC', 'VPC_ENDPOINT']
+    default: 'PUBLIC'
   identity_provider_type:
     description:
       - The identity provider type.
     type: str
     choices: ['SERVICE_MANAGED', 'API_GATEWAY']
-  
+    default: 'SERVICE_MANAGED'
+  user_home_directory_type:
+    description:
+      - The Type of directory that the user is mapped to.
+    type: str
+    choices: ['PATH', 'LOGICAL']
+  user_home_directory:
+    description:
+      - The location of the directory for the user home directory.
+    type: str
+    default: '/'
+  host_key:
+    description:
+      - The SSH-keygen generated key for this particular host.
+      - It is not recommended to manage your own SSH keys for sftp hosts, but it is provided as a convenience for migration.
+    type: str
+  identity_provider_role:
+    description:
+      - The role parameter provides the type of role used to authenticate the user account.
+      - Length Constraints -  Minimum length of 20. Maximum length of 2048.
+      - Pattern - arn:.*role/.*
+    type: str
+  identity_provider_url:
+    description:
+    - The Url parameter provides contains the location of the service endpoint used to authenticate users.
+    - Length Constraints: Maximum length of 255.
+    type: str
+  logging_role:
+    description:
+      - A value that allows the service to write your SFTP users' activity to your Amazon CloudWatch logs for monitoring and auditing purposes.
+      - Length Constraints: Minimum length of 20. Maximum length of 2048.
+      - Pattern: arn:.*role/.*
+    type: str
+  transfer_endpoint_url:
+    description:
+      - The URL for the transfer endpoint.
+    type: str
+  vpc_id:
+    description:
+      - the VPC to place the created SFTP server into.
+    type: str
 extends_documentation_fragment:
     - aws
     - ec2
