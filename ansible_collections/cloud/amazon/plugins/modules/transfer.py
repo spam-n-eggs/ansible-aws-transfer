@@ -35,10 +35,6 @@ options:
       - Fully Qualified Domain name of the SFTP Server to create
     required: true
     type: str
-  url:
-    description:
-        - The endpoint to use for the SFTP Server Creation
-    type: str
   state:
     description:
       - Create or remove the SFTP Server
@@ -78,6 +74,30 @@ options:
       - The location of the directory for the user home directory.
     type: str
     default: '/'
+  user_home_directory_mappings:
+    description:
+      - Mappings for the user home directory on S3 to the local filesystem on the SFTP server.
+    type: dict
+  user_name:
+    description:
+      - The user name to create an account on the SFTP Server for.
+    type: str
+  user_policy:
+    description:
+      - A JSON-Formatted policy to limit the user, if needed.
+    type: str
+  user_role:
+    description:
+      - The ARN that points to the role that the user should assume.  This role should have access to the S3 Bucket.
+    type: str
+  user_ssh_public_key_body:
+    description:
+      - The body of the public key that will be used (if pre-generated) to access the SFTP Server.
+    type: str
+  user_tags:
+    description:
+      - Tags that should be associated with the user when created.
+    type: list
   host_key:
     description:
       - The SSH-keygen generated key for this particular host.
@@ -87,18 +107,18 @@ options:
     description:
       - The role parameter provides the type of role used to authenticate the user account.
       - Length Constraints -  Minimum length of 20. Maximum length of 2048.
-      - Pattern - arn:.*role/.*
+      - 'Pattern:: arn::.*role/.*'
     type: str
   identity_provider_url:
     description:
     - The Url parameter provides contains the location of the service endpoint used to authenticate users.
-    - Length Constraints: Maximum length of 255.
+    - Length Constraints - Maximum length of 255.
     type: str
   logging_role:
     description:
       - A value that allows the service to write your SFTP users' activity to your Amazon CloudWatch logs for monitoring and auditing purposes.
-      - Length Constraints: Minimum length of 20. Maximum length of 2048.
-      - Pattern: arn:.*role/.*
+      - Length Constraints - Minimum length of 20. Maximum length of 2048.
+      - 'Pattern:: arn::.*role/.*'
     type: str
   transfer_endpoint_url:
     description:
@@ -122,7 +142,6 @@ EXAMPLES = '''
 # Note: These examples do not set authentication details, see the AWS Guide for details.
 
 '''
-
 import boto3
 
 from ansible.module_utils.basic import to_text
@@ -363,7 +382,6 @@ def main():
             state=dict(default='present', choices=['present', 'absent', 'add_user', 'remove_user']),
             tags=dict(type='dict'),
             purge_tags=dict(type='bool', default=True),
-            versioning=dict(type='bool'),
             # Default to public because AWS does.  This is probably not the best option.
             endpoint_type=dict(default="PUBLIC", choices=['PUBLIC', 'VPC_ENDPOINT']),
             vpc_id=dict(required=False),
