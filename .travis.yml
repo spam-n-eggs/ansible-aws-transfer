@@ -1,6 +1,5 @@
 language: python
 python:
-  - 2.7
   - 3.7
 script:
-  - ./sanity-tests.sh $TRAVIS_PYTHON_VERSION
+  - "./sanity-tests.sh ${TRAVIS_PYTHON_VERSION}"
