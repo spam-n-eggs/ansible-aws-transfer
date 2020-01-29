@@ -1,1 +1,0 @@
-/usr/local/lib/python3.7/site-packages/ansible_test/_data/sanity/import/importer.py
