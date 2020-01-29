@@ -142,16 +142,16 @@ EXAMPLES = '''
 # Note: These examples do not set authentication details, see the AWS Guide for details.
 
 '''
-import boto3
 
 from ansible.module_utils.basic import to_text
 from ansible.module_utils.aws.core import AnsibleAWSModule, is_boto3_error_code
 from ansible.module_utils.ec2 import compare_policies, ec2_argument_spec, boto3_tag_list_to_ansible_dict, \
     ansible_dict_to_boto3_tag_list
 from ansible.module_utils.ec2 import get_aws_connection_info, boto3_conn, AWSRetry
-from pydash import py_
 
 try:
+    import boto3
+    from pydash import py_
     from botocore.exceptions import BotoCoreError, ClientError, EndpointConnectionError, WaiterError
 except ImportError:
     pass  # handled by AnsibleAWSModule
