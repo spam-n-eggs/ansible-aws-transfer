@@ -46,13 +46,13 @@ tags: []
 dependencies: {}
 
 # The URL of the originating SCM repository
-repository: https://github.com/spam_n_eggs/ansible-aws-transfer
+repository: https://github.com/spam-n-eggs/ansible-aws-transfer
 
 # The URL to any online docs
-documentation: https://github.com/spam_n_eggs/ansible-aws-transfer/wiki
+documentation: https://github.com/spam-n-eggs/ansible-aws-transfer/wiki
 
 # The URL to the homepage of the collection/project
-homepage: https://github.com/spam_n_eggs/ansible-aws-transfer/wiki
+homepage: https://github.com/spam-n-eggs/ansible-aws-transfer/wiki
 
 # The URL to the collection issue tracker
-issues: https://github.com/spam_n_eggs/ansible-aws-transfer/issues
+issues: https://github.com/spam-n-eggs/ansible-aws-transfer/issues
