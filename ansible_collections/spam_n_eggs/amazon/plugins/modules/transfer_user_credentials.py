@@ -17,9 +17,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import (absolute_import, division, print_function)
 from ansible.module_utils.aws.core import AnsibleAWSModule
-from ansible.module_utils.ec2 import ec2_argument_spec, AWSRetry
-from ansible_collections.spam_n_eggs.amazon.plugins.modules.__init__ import create_boto3_client
+from ansible.module_utils.ec2 import ec2_argument_spec, AWSRetry, get_aws_connection_info
+
+__metaclass__ = type
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.1',
@@ -30,7 +32,7 @@ ANSIBLE_METADATA = {
 DOCUMENTATION = '''
 ---
 module: transfer_user_credentials
-short_description: AWS Transfer User Management 
+short_description: AWS Transfer User Management
 version_added: "2.4"
 description:
   - "A Module designed to manage AWS Transfer Users"
@@ -84,6 +86,31 @@ try:
 except ImportError:
     # Pass it straight through to the AnsibleAWSModule
     pass
+
+
+def create_boto3_client(module):
+    """
+    Get a boto3 client to interact with the transfer module.
+    :param module: AnsibleAWSModule
+    :return: boto3.session.Session
+    """
+    region, ec2_url, aws_connect_kwargs = get_aws_connection_info(module, boto3=True)
+    if region in ('us-east-1', '', None):
+        # default to US Standard region
+        location = 'us-east-1'
+    else:
+        # Boto uses symbolic names for locations but region strings will
+        # actually work fine for everything except us-east-1 (US Standard)
+        location = region
+
+    # Get AWS connection information.
+    aws_access_token = aws_connect_kwargs.get('aws_access_key_id')
+    aws_secret_key = aws_connect_kwargs.get('aws_secret_access_key')
+    aws_session_token = aws_connect_kwargs.get('security_token')
+
+    transfer_client = boto3.client(service_name='transfer', region_name=region, aws_access_key_id=aws_access_token,
+                                   aws_secret_access_key=aws_secret_key, aws_session_token=aws_session_token)
+    return transfer_client
 
 
 @AWSRetry.exponential_backoff(max_delay=120)
@@ -140,7 +167,7 @@ def ssh_key_is_present(client, module):
 def run_module():
     # define available arguments/parameters a user can pass to the module
     module_args = ec2_argument_spec()
-    module_args.modify(
+    module_args.update(
         dict(
             server_id=dict(required=True, type='str'),
             ssh_key=dict(required=True, type='str'),
@@ -176,18 +203,12 @@ def run_module():
     if module.check_mode:
         module.exit_json(**result)
 
-    # manipulate or modify the state as needed (this is going to be the
-    # part where your module will do what it needs to do)
-    result['original_message'] = module.params['name']
-    result['message'] = 'goodbye'
-
     # use whatever logic you need to determine whether or not this module
     # made any modifications to your target
     state = module.params.get('state')
     client = create_boto3_client(module)
     if state == 'present':
         result = create_credentials(client, module)
-        module.exit_json(**result)
     if state == 'absent':
         result = delete_credentials(client, module)
 
@@ -195,8 +216,10 @@ def run_module():
     # simple AnsibleModule.exit_json(), passing the key/value results
     module.exit_json(**result)
 
+
 def main():
     run_module()
+
 
 if __name__ == '__main__':
     main()

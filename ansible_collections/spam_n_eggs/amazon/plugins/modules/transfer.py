@@ -31,7 +31,7 @@ description:
     - Manage SFTP Servers in AWS Using AWS Transfer Service.
 version_added: "2.4"
 requirements: [ boto3, pydash ]
-author: 
+author:
   - Mark J. Horninger(@spam-n-eggs)
   - Dominion Solutions LLC (@dominion-solutions)
   - TAPP Network, LLC (@TappNetwork)
@@ -156,6 +156,13 @@ except ImportError:
     pass  # handled by AnsibleAWSModule
 
 SERVER_NAME_KEY = 'aws:transfer:customHostname'
+
+from ansible.module_utils.ec2 import get_aws_connection_info
+try:
+    import boto3
+except ImportError:
+    # Pass it to the AnsibleAWSModule
+    pass
 
 
 def create_or_update_sftp(client, module):
