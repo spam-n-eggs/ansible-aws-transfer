@@ -17,6 +17,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import (absolute_import, division, print_function)
+from ansible.module_utils.basic import to_text
+from ansible.module_utils.aws.core import AnsibleAWSModule
+from ansible.module_utils.ec2 import ec2_argument_spec, get_aws_connection_info, AWSRetry
 
 __metaclass__ = type
 
@@ -28,7 +31,10 @@ description:
     - Manage SFTP Servers in AWS Using AWS Transfer Service.
 version_added: "2.4"
 requirements: [ boto3, pydash ]
-author: "Mark J. Horninger(@spam_n_eggs); Dominion Solutions LLC(@dominion-solutions); TAPP Network, LLC(@TappNetwork)"
+author: 
+  - Mark J. Horninger(@spam-n-eggs)
+  - Dominion Solutions LLC (@dominion-solutions)
+  - TAPP Network, LLC (@TappNetwork)
 options:
   name:
     description:
@@ -142,13 +148,6 @@ EXAMPLES = '''
 # Note: These examples do not set authentication details, see the AWS Guide for details.
 
 '''
-
-from ansible.module_utils.basic import to_text
-from ansible.module_utils.aws.core import AnsibleAWSModule, is_boto3_error_code
-from ansible.module_utils.ec2 import compare_policies, ec2_argument_spec, boto3_tag_list_to_ansible_dict, \
-    ansible_dict_to_boto3_tag_list
-from ansible.module_utils.ec2 import get_aws_connection_info, boto3_conn, AWSRetry
-
 try:
     import boto3
     from pydash import py_
