@@ -114,7 +114,7 @@ def create_credentials(client, module):
         ServerId=server_id,
         UserName=module.params.get('user_name')
     )
-    ssh_key = client.params.get('ssh_key')
+    ssh_key = module.params.get('ssh_key')
     if ssh_key_is_present(client, module):
         return dict(changed=False, **user_description)
     else:
