@@ -16,10 +16,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 from __future__ import (absolute_import, division, print_function)
-from ansible.module_utils.aws.core import AnsibleAWSModule
-from ansible.module_utils.ec2 import ec2_argument_spec, AWSRetry, get_aws_connection_info
 
 __metaclass__ = type
 
@@ -35,25 +32,31 @@ module: transfer_user_credentials
 short_description: AWS Transfer User Management
 version_added: "2.4"
 description:
-  - "A Module designed to manage AWS Transfer Users"
+  - A Module designed to manage AWS Transfer Users
+requirements: [ "boto3", "pydash" ]
+author: "Mark J. Horninger (@spam-n-eggs); Dominion Solutions LLC (@dominion-solutions); TAPP Network, LLC (@TappNetwork)"
 options:
   server_id:
     description:
       - A unique identifier for the server assigned by AWS.
-    required: true
+    required: True
+    type: str
   ssh_key:
     description:
       - The Public SSH Key to modify on the user.
-    required: true
+    required: True
+    type: str
   state:
     description:
       - The Desired State when this operation is complete.
-    required: true
-    options: ['present', 'absent']
+    required: True
+    choices: [ 'present', 'absent' ]
+    type: str
   user_name:
     description:
       - The User Name to modify.
-    required: true
+    required: True
+    type: str
   replace_others:
     description:
       - Replace all the other keys with this one.
@@ -61,25 +64,15 @@ options:
 extends_documentation_fragment:
   - aws
   - ec2
-author:
-  - Mark J. Horninger (@spam-n-eggs)
-  - Dominion Solutions LLC (@dominion-solutions)
-  - TAPP Network, LLC (@TappNetwork)
 '''
 
 EXAMPLES = '''
 '''
 
-RETURN = '''
-original_message:
-    description: The original name param that was passed in
-    type: str
-    returned: always
-message:
-    description: The output message that the module generates
-    type: str
-    returned: always
-'''
+
+from ansible.module_utils.aws.core import AnsibleAWSModule
+from ansible.module_utils.ec2 import ec2_argument_spec, AWSRetry, get_aws_connection_info
+
 try:
     import boto3
     from pydash import py_
@@ -171,7 +164,7 @@ def run_module():
         dict(
             server_id=dict(required=True, type='str'),
             ssh_key=dict(required=True, type='str'),
-            state=dict(required=True, type='str', options=['present', 'absent']),
+            state=dict(required=True, type='str', choices=['present', 'absent']),
             user_name=dict(required=True, type='str'),
             replace_others=dict(required=False, type='bool')
         )
