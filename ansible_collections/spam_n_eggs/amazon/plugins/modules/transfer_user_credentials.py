@@ -131,7 +131,7 @@ def find_ssh_key_id(client, module):
             ServerId=server_id,
             UserName=module.params.get('user_name')
         )
-        ssh_key = client.params.get('ssh_key')
+        ssh_key = module.params.get('ssh_key')
         return py_.find_index(user_description["User"]["SshPublicKeys"], {"SshPublicKeyBody": ssh_key})['SshPublicKeyId']
 
 
@@ -153,7 +153,7 @@ def ssh_key_is_present(client, module):
         ServerId=server_id,
         UserName=module.params.get('user_name')
     )
-    ssh_key = client.params.get('ssh_key')
+    ssh_key = module.params.get('ssh_key')
     return py_.find_index(user_description["User"]["SshPublicKeys"], {"SshPublicKeyBody": ssh_key}) != -1
 
 
