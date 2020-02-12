@@ -1,0 +1,13 @@
+{
+  "ANSIBLE_MODULE_ARGS" : {
+    "state": "absent",
+    "aws_access_key": "AKIA46VJ2ZWECBBSLQUA",
+    "aws_secret_key": "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",
+    "region": "us-east-1",
+    "debug_botocore_endpoint_logs": "true",
+    "user_name": "gfm-sftp-test",
+    "server_id": "s-b219339005cf42149",
+    "ssh_key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCwptXcnuPs7+tu9Bzlweb04lgapPJo9XzOKHkVPamMXKurcOq1+0sz84zIqFNyFqJors7P9lM/hTPnL0YSrIK5NiZNw1lciO1QSAy4UvmQ1ak73SSEm4Qfoy6AFwTvRh4lxeBwh4KKVG08eDxNDAAIXaVDLRgYb15f8WWVZbNQcbhYJwkSTQzHD1ZmVQnZQ203ltGqzk4T7DfsxhmxyRXJSSBPqSchWcAqFLs17/BHWE/tDweeM0/CqbqQNkgbDPxG9awdHyNYfE7mAkhvYWnPrF0dRXq/9ZOHTWqoOlQBjRXC9Wr2kIcxkx4pf6h/wzCyLN+lYw9G+QX+TM0utFYr mhorninger@Marks-MacBook-Pro.local",
+    "ssh_key_id": "key-454608bb61b048598"
+  }
+}

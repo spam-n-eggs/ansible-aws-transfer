@@ -44,7 +44,10 @@ options:
   ssh_key:
     description:
       - The Public SSH Key to modify on the user.
-    required: True
+    type: str
+  ssh_key_id:
+    description:
+      - The ID of the SSH key to remove from the user.
     type: str
   state:
     description:
@@ -115,7 +118,8 @@ def create_credentials(client, module):
         UserName=module.params.get('user_name')
     )
     ssh_key = module.params.get('ssh_key')
-    if ssh_key_is_present(client, module):
+    ssh_key_id = find_ssh_key_id(client, module)
+    if ssh_key_id is not None:
         return dict(changed=False, **user_description)
     else:
         changed = True
@@ -125,36 +129,39 @@ def create_credentials(client, module):
 
 
 def find_ssh_key_id(client, module):
-    if ssh_key_is_present(client, module):
-        server_id = module.params.get('server_id')
-        user_description = client.describe_user(
-            ServerId=server_id,
-            UserName=module.params.get('user_name')
-        )
-        ssh_key = module.params.get('ssh_key')
-        return py_.find_index(user_description["User"]["SshPublicKeys"], {"SshPublicKeyBody": ssh_key})['SshPublicKeyId']
-
-
-@AWSRetry.exponential_backoff(max_delay=120)
-def delete_credentials(client, module):
-    if not ssh_key_is_present(client, module):
-        return dict(changed=False, **module.params)
-    else:
-        ssh_key_id = find_ssh_key_id(client, module)
-        changed = True
-        response = client.delete_ssh_public_key(ServerId=module.params.get('server_id'),
-                                                UserName=module.params.get('user_name'), SshPublicKeyId=ssh_key_id)
-        return dict(changed=changed, **response)
-
-
-def ssh_key_is_present(client, module):
     server_id = module.params.get('server_id')
     user_description = client.describe_user(
         ServerId=server_id,
         UserName=module.params.get('user_name')
     )
     ssh_key = module.params.get('ssh_key')
-    return py_.find_index(user_description["User"]["SshPublicKeys"], {"SshPublicKeyBody": ssh_key}) != -1
+    record =  py_.find(user_description["User"]["SshPublicKeys"], {"SshPublicKeyBody": ssh_key})
+    if record is not None:
+        return record['SshPublicKeyId']
+
+
+@AWSRetry.exponential_backoff(max_delay=120)
+def delete_credentials(client, module):
+    ssh_key_id = module.params.get('ssh_key_id')
+    if not ssh_key_is_present(client, module, ssh_key_id):
+        return dict(changed=False, **module.params)
+    else:
+        changed = True
+        response = client.delete_ssh_public_key(ServerId=module.params.get('server_id'),
+                                                UserName=module.params.get('user_name'), SshPublicKeyId=ssh_key_id)
+        return dict(changed=changed, **response)
+
+
+def ssh_key_is_present(client, module, id):
+    server_id = module.params.get('server_id')
+    user_description = client.describe_user(
+        ServerId=server_id,
+        UserName=module.params.get('user_name')
+    )
+    if len(user_description["User"]["SshPublicKeys"]) > 0:
+        return py_.find_index(user_description["User"]["SshPublicKeys"], {"SshPublicKeyId": id}) != -1
+    else:
+        return False
 
 
 def run_module():
@@ -163,7 +170,8 @@ def run_module():
     module_args.update(
         dict(
             server_id=dict(required=True, type='str'),
-            ssh_key=dict(required=True, type='str'),
+            ssh_key=dict(type='str'),
+            ssh_key_id=dict(type='str'),
             state=dict(required=True, type='str', choices=['present', 'absent']),
             user_name=dict(required=True, type='str'),
             replace_others=dict(required=False, type='bool')
