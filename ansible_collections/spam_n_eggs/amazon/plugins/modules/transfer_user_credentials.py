@@ -135,7 +135,7 @@ def find_ssh_key_id(client, module):
         UserName=module.params.get('user_name')
     )
     ssh_key = module.params.get('ssh_key')
-    record =  py_.find(user_description["User"]["SshPublicKeys"], {"SshPublicKeyBody": ssh_key})
+    record = py_.find(user_description["User"]["SshPublicKeys"], {"SshPublicKeyBody": ssh_key})
     if record is not None:
         return record['SshPublicKeyId']
 
