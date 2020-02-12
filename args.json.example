@@ -1,0 +1,11 @@
+{
+    "ANSIBLE_MODULE_ARGS": {
+        "ssh_key": "ssh-rsa ...(replace with public key)",
+        "server_id": "",
+        "user_name": "",
+        "state": "present",
+        "aws_access_key": "",
+        "aws_secret_key": "",
+        "region": "us-east-1"
+    }
+}

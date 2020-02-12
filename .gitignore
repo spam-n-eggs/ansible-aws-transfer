@@ -199,3 +199,6 @@ fabric.properties
 # Android studio 3.1+ serialized cache file
 .idea/caches/build_file_checksums.ser
 .idea
+
+args.json
+ansible_collections/spam_n_eggs/amazon/tests/*
