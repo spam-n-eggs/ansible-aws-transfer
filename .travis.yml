@@ -11,4 +11,4 @@ before_deploy:
   - "ansible-galaxy collection build ansible_collections/spam_n_eggs/amazon"
 deploy:
   provider: script
-  script: "ansible-galaxy collection publish --api-key ${ANSIBLE_API_KEY} *.tar.gz"
+  script: "ansible-galaxy collection publish --api-key ${ANSIBLE_API_KEY} $(find *.tar.gz)"
