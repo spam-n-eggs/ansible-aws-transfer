@@ -319,7 +319,6 @@ def add_sftp_users(client, module):
     module.exit_json(changed=changed, **result)
 
 
-
 @AWSRetry.exponential_backoff(max_delay=120)
 def add_user(client, user_name, user_home_directory, user_home_directory_type,
              user_home_directory_mappings, user_policy, user_role, user_ssh_public_key_body, user_tags, name):
@@ -333,7 +332,7 @@ def add_user(client, user_name, user_home_directory, user_home_directory_type,
         )
 
         if users is not None:
-            exists = (py_.find_index(users['Users'], { "UserName": user_name }) != -1)
+            exists = (py_.find_index(users['Users'], {"UserName": user_name}) != -1)
 
         add_user_kwargs = dict(
             Role=user_role,
