@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 PYTHON_VERSION=$1
 shift
-pushd ansible_collections/spam_n_eggs/amazon
+pushd ansible_collections/tapp/amazon
 ansible-test sanity --venv --python $PYTHON_VERSION "${@}"
 RC=$?
 popd
