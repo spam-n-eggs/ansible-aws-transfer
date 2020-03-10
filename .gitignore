@@ -201,4 +201,6 @@ fabric.properties
 .idea
 
 args.json
-ansible_collections/spam_n_eggs/amazon/tests/*
+ansible_collections/tapp/amazon/tests/*
+/server_args.json
+/args-ssh.json

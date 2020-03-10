@@ -7,8 +7,8 @@ stages:
 script:
   - "./sanity-tests.sh ${TRAVIS_PYTHON_VERSION}"
 before_deploy:
-  - "rm -rf ansible_collections/spam_n_eggs/amazon/tests/output"
-  - "ansible-galaxy collection build ansible_collections/spam_n_eggs/amazon"
+  - "rm -rf ansible_collections/tapp/amazon/tests/output"
+  - "ansible-galaxy collection build ansible_collections/tapp/amazon"
 deploy:
   skip_cleanup: true
   provider: script
